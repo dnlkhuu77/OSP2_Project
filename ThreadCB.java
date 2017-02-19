@@ -1,3 +1,6 @@
+//Name: Daniel Khuu
+//ID: 109372156
+
 package osp.Threads;
 import java.util.Vector;
 import java.util.Enumeration;
@@ -29,7 +32,7 @@ public class ThreadCB extends IflThreadCB
     */
     public ThreadCB()
     {
-        // your code goes here
+        super();
 
     }
 
@@ -42,6 +45,7 @@ public class ThreadCB extends IflThreadCB
     public static void init()
     {
         // your code goes here
+        //initialize an array list for the queue
 
     }
 
