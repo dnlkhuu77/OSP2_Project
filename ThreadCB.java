@@ -44,8 +44,9 @@ public class ThreadCB extends IflThreadCB
     */
     public static void init()
     {
-        // your code goes here
+
         //initialize an array list for the queue
+        thread_queue = new ArrayList<ThreadCB>();
 
     }
 
@@ -68,8 +69,26 @@ public class ThreadCB extends IflThreadCB
     */
     static public ThreadCB do_create(TaskCB task)
     {
-        // your code goes here
-        return null;
+        //WE NEED TO ADD THE ADDITIONAL REQUIREMENT OF THE TOTAL CPU TIME!!!!
+
+        if(task.getThreadCount() >= MaxThreadsPerTask){
+            dispatch(); //we do this, so the next call will work!
+            return null;
+        }
+        
+        ThreadCB newThreads = new ThreadCB();
+        newThread.setPriority(task.getPriority());
+        newThread.setStatus(ThreadReady);
+        newThread.setTask(task);
+
+        if(task.addThread(newThread) == FAILURE){
+            dispatch();
+            return null;
+        }
+
+        thread_queue.add(newThread);
+        dispatch();
+        return newThread;
 
     }
 
