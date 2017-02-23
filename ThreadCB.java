@@ -1,7 +1,11 @@
 //Name: Daniel Khuu
 //ID: 109372156
 
+//I pledge my honor that all parts of this project were done by me individually
+//and without collaboration with anybody else.
+
 package osp.Threads;
+import java.util.PriorityQueue;
 import java.util.Vector;
 import java.util.Enumeration;
 import osp.Utilities.*;
@@ -45,8 +49,10 @@ public class ThreadCB extends IflThreadCB
     public static void init()
     {
 
-        //initialize an array list for the queue
-        thread_queue = new ArrayList<ThreadCB>();
+        //initalize the priorty queue
+        PriorityQueue thread_queue = new PriorityQueue();
+
+        //fill in the ArrayList of devices
 
     }
 
@@ -73,16 +79,24 @@ public class ThreadCB extends IflThreadCB
 
         if(task.getThreadCount() >= MaxThreadsPerTask){
             dispatch(); //we do this, so the next call will work!
+            //System.out.print(" QUEUE IS TOO FULL: " + task.getThreadCount());
             return null;
         }
         
-        ThreadCB newThreads = new ThreadCB();
-        newThread.setPriority(task.getPriority());
+        ThreadCB newThread = new ThreadCB();
         newThread.setStatus(ThreadReady);
+        
+        //SUGGESTION
+        if(task.getStatus() == TaskTerm){
+            return null;
+        }
+
+        newThread.setPriority(task.getPriority());
         newThread.setTask(task);
 
         if(task.addThread(newThread) == FAILURE){
             dispatch();
+            //System.out.print("ADDITION FAILS!");
             return null;
         }
 
@@ -108,6 +122,14 @@ public class ThreadCB extends IflThreadCB
     public void do_kill()
     {
         // your code goes here
+        //looping through devics and make sure all pending Ios are killed
+
+        if(getStatus() == ThreadReady){
+            thread_queue.poll();
+            //might be .remove(this);
+        }
+
+
 
     }
 
