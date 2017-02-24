@@ -75,7 +75,6 @@ public class ThreadCB extends IflThreadCB
     */
     static public ThreadCB do_create(TaskCB task)
     {
-        //WE NEED TO ADD THE ADDITIONAL REQUIREMENT OF THE TOTAL CPU TIME!!!!
 
         if(task.getThreadCount() >= MaxThreadsPerTask){
             dispatch(); //we do this, so the next call will work!
@@ -129,6 +128,16 @@ public class ThreadCB extends IflThreadCB
             //might be .remove(this);
         }
 
+        if(getStatus() == ThreadRunning){
+            //stop the thread
+            MMU.getPTBR().getTask().setCurrentThread(null);
+        }
+
+        //stuff
+
+        setStatus(ThreadKill);
+
+
 
 
     }
@@ -151,7 +160,18 @@ public class ThreadCB extends IflThreadCB
     */
     public void do_suspend(Event event)
     {
-        // your code goes here
+        if(getStatus() == ThreadRunning){
+            setStatus(ThreadWaiting);
+            //set the current thread to null
+            getTask().setCurrentThread(null);
+        }
+        else if(getStatus() == ThreadWaiting){
+            setStatus(getStatus() + 1); //check this
+        }
+
+        thread_queue.poll(this); //??
+        event.addThread(this);
+        dispatch();
 
     }
 
@@ -186,6 +206,7 @@ public class ThreadCB extends IflThreadCB
     public static int do_dispatch()
     {
         // your code goes here
+        //THE THREAD IS SCHEDULED USING CPU TIME
         return 0;
 
     }
