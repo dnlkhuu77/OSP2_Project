@@ -17,6 +17,17 @@ import osp.Devices.*;
 import osp.Memory.*;
 import osp.Resources.*;
 
+//MMU.getPTBR() gets you the page table of the current task
+//getTask() gets the task from the page table
+//getCurrentThread() gets the current thread from the task
+
+//Context Switch:
+// Pre-Empty
+// 1. Change state of thread to ThreadWaiting/ThreadReady.
+// 2. Get current thread using method above
+// 3. Set PTBR to null.
+// 4. Change the current league of the previous task to null.
+
 /**
    This class is responsible for actions related to threads, including
    creating, killing, dispatching, resuming, and suspending threads.
@@ -49,10 +60,7 @@ public class ThreadCB extends IflThreadCB
     public static void init()
     {
 
-        //initalize the priorty queue
         PriorityQueue thread_queue = new PriorityQueue();
-
-        //fill in the ArrayList of devices
 
     }
 
@@ -76,16 +84,14 @@ public class ThreadCB extends IflThreadCB
     static public ThreadCB do_create(TaskCB task)
     {
 
-        if(task.getThreadCount() >= MaxThreadsPerTask){
+        if(task.getThreadCount() >= MaxThreadsPerTask || task == null){
             dispatch(); //we do this, so the next call will work!
-            //System.out.print(" QUEUE IS TOO FULL: " + task.getThreadCount());
             return null;
         }
         
         ThreadCB newThread = new ThreadCB();
         newThread.setStatus(ThreadReady);
         
-        //SUGGESTION
         if(task.getStatus() == TaskTerm){
             return null;
         }
@@ -120,24 +126,30 @@ public class ThreadCB extends IflThreadCB
     */
     public void do_kill()
     {
-        // your code goes here
-        //looping through devics and make sure all pending Ios are killed
+        //REMAINDER: looping through devics and make sure all pending Ios are killed
 
         if(getStatus() == ThreadReady){
-            thread_queue.poll();
-            //might be .remove(this);
+            thread_queue.remove(this);
         }
-
-        if(getStatus() == ThreadRunning){
-            //stop the thread
-            MMU.getPTBR().getTask().setCurrentThread(null);
+        else if(getStatus() == ThreadRunning){
+            MMU.getPTBR().getTask().getCurrentThread(null);
         }
+        //nothing special to do for ThreadWaiting
 
-        //stuff
+        //cancelling the IO
+        for(int i = 0; i < Device.getTableSize(); i++){
+            Device.get(i).cancelPendingIO(this);
+        }
 
         setStatus(ThreadKill);
 
+        ResourceCB.giveupResources(this);
 
+        dispatch(); //dispatch a new thread
+
+        if(getTask().getThreadCount() == 0){
+            getTask().kill();
+        }
 
 
     }
@@ -169,7 +181,6 @@ public class ThreadCB extends IflThreadCB
             setStatus(getStatus() + 1); //check this
         }
 
-        thread_queue.poll(this); //??
         event.addThread(this);
         dispatch();
 
@@ -186,7 +197,15 @@ public class ThreadCB extends IflThreadCB
     */
     public void do_resume()
     {
-        // your code goes here
+        if(getStatus() == ThreadWaiting){
+            setStatus(ThreadReady);
+            thread_queue.add(this);
+        }
+        else if{
+            setStatus(getStatus() - 1);
+        }
+
+        dispatch();
 
     }
 
