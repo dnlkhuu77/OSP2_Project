@@ -34,10 +34,11 @@ import osp.Resources.*;
 
    @OSPProject Threads
 */
-public class ThreadCB extends IflThreadCB 
+public class ThreadCB extends IflThreadCB
 {
 
     private static PriorityQueue<ThreadCB> thread_queue;
+    private double total_time;
     /**
        The thread constructor. Must call 
 
@@ -50,6 +51,8 @@ public class ThreadCB extends IflThreadCB
     public ThreadCB()
     {
         super();
+        //each thread will have a total_time counter at 0
+        total_time = 0;
 
     }
 
@@ -103,7 +106,6 @@ public class ThreadCB extends IflThreadCB
 
         if(task.addThread(newThread) == FAILURE){
             dispatch();
-            //System.out.print("ADDITION FAILS!");
             return null;
         }
 
@@ -184,6 +186,7 @@ public class ThreadCB extends IflThreadCB
         }
 
         event.addThread(this);
+        thread_queue.remove(this);
         dispatch();
 
     }
@@ -227,7 +230,53 @@ public class ThreadCB extends IflThreadCB
     public static int do_dispatch()
     {
         //THE THREAD IS SCHEDULED USING CPU TIME
-        return 0;
+        //I think startTime = HClock.get() returns the hardware time in long. 
+        //After 100 units of time, it will be startTime + 100. For setting timer, use HTimer class.
+
+        ThreadCB start_thread = null;
+
+
+
+        try{
+            start_thread = MMU.getPTBR().getTask().getCurrentThread();
+        }catch(Exception e){
+            System.out.print("This is a null starting thread");
+        }
+
+        //USE THE PRIORITIES TO START AND STOP THREADS!
+        //CURRENTLY ROBIN
+
+        //If the current thread is not null, set it to ThreadReady
+        if(start_thread != null){
+            MMU.getPTBR().getTask().setCurrentThread(null);
+            MMU.setPTBR(null);
+            start_thread.setStatus(ThreadReady);
+            thread_queue.add(start_thread);
+        }
+
+        ThreadCB activate_thread = null;
+        double lesser = Double.MAX_VALUE;
+        //WE WANT TO RUN THE THREAD WITH THE LEAST CPU TIME USED!
+        for(ThreadCB element: thread_queue){
+            if(element.getTime() < lesser){
+                lesser = element.getTime();
+                activate_thread = element;
+            }
+        }
+
+        if(thread_queue.size() > 0){
+            thread_queue.remove(activate_thread); //CHANGE THIS TO THE ONE WITH THE MOST PRIORITY
+            MMU.setPTBR(activate_thread.getTask().getPageTable());
+            activate_thread.getTask().setCurrentThread(activate_thread);
+            activate_thread.setStatus(ThreadRunning);
+            HTimer.set(100);
+            activate_thread.setTime(activate_thread.getTimeOnCPU());
+
+            return SUCCESS;
+        }
+
+        MMU.setPTBR(null);
+        return FAILURE;
 
     }
 
@@ -258,10 +307,13 @@ public class ThreadCB extends IflThreadCB
 
     }
 
+    public double getTime(){
+        return total_time;
+    }
 
-    /*
-       Feel free to add methods/fields to improve the readability of your code
-    */
+    public void setTime(double total_time){
+        this.total_time = total_time;
+    }
 
 }
 
