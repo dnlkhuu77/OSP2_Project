@@ -36,6 +36,8 @@ import osp.Resources.*;
 */
 public class ThreadCB extends IflThreadCB 
 {
+
+    private static PriorityQueue<ThreadCB> thread_queue;
     /**
        The thread constructor. Must call 
 
@@ -60,7 +62,7 @@ public class ThreadCB extends IflThreadCB
     public static void init()
     {
 
-        PriorityQueue thread_queue = new PriorityQueue();
+        thread_queue = new PriorityQueue<ThreadCB>();
 
     }
 
@@ -132,7 +134,7 @@ public class ThreadCB extends IflThreadCB
             thread_queue.remove(this);
         }
         else if(getStatus() == ThreadRunning){
-            MMU.getPTBR().getTask().getCurrentThread(null);
+            MMU.getPTBR().getTask().setCurrentThread(null);
         }
         //nothing special to do for ThreadWaiting
 
@@ -201,7 +203,7 @@ public class ThreadCB extends IflThreadCB
             setStatus(ThreadReady);
             thread_queue.add(this);
         }
-        else if{
+        else{
             setStatus(getStatus() - 1);
         }
 
@@ -224,7 +226,6 @@ public class ThreadCB extends IflThreadCB
     */
     public static int do_dispatch()
     {
-        // your code goes here
         //THE THREAD IS SCHEDULED USING CPU TIME
         return 0;
 
