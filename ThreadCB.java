@@ -250,11 +250,6 @@ public class ThreadCB extends IflThreadCB
 
         try{
             start_thread = MMU.getPTBR().getTask().getCurrentThread();
-
-            //THE CURRENT THREAD IS EITHER FINISHED BY 100 OR AUTOMATICALLY
-            long five = start_thread.getTime(); //how long has the thread been running so far
-            long running = (long) start_thread.getTimeOnCPU();
-            start_thread.setTime(five + running);
             
         }catch(Exception e){
             System.out.print("This is a null starting thread. \n");
@@ -265,12 +260,17 @@ public class ThreadCB extends IflThreadCB
 
         //Pre-Emptying a Thread (ThreadRunning -> ThreadReady)
         if(start_thread != null){
+                //THE CURRENT THREAD IS EITHER FINISHED BY 100 OR AUTOMATICALLY
+                long five = start_thread.getTime(); //how long has the thread been running so far
+                long running = (long) start_thread.getTimeOnCPU();
+                start_thread.setTime(five + running);
+
             start_thread.setStatus(ThreadReady); //HOW TO CHECK IF IT'S WAITING FOR I/O (THREADWAITING)
             MMU.getPTBR().getTask().setCurrentThread(null); //Last Step (does this make sense though?)
             MMU.setPTBR(null);
             thread_queue.add(start_thread);
         }
-
+/*
         //PICKING THE THREAD WITH THE LEAST CPU TIME TO RUN
         timing_thread = null;
         long lesser = Long.MAX_VALUE;
@@ -280,7 +280,7 @@ public class ThreadCB extends IflThreadCB
                 lesser = element.getTime();
                 timing_thread = element;
             }
-        }
+        }*/
 
         if(thread_queue.isEmpty()){
             MMU.setPTBR(null);
@@ -288,7 +288,7 @@ public class ThreadCB extends IflThreadCB
         }
 
         //Dispatching a Thread (ThreadReady -> ThreadRunning)
-        thread_queue.remove(timing_thread); //removing from the ready queue
+        timing_thread = thread_queue.poll(); //removing from the ready queue
 
         MMU.setPTBR(timing_thread.getTask().getPageTable());
         timing_thread.getTask().setCurrentThread(timing_thread);
