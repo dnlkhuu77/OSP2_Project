@@ -6,6 +6,7 @@
 
 package osp.Threads;
 import java.util.PriorityQueue;
+import java.util.Comparator;
 import java.util.Vector;
 import java.util.Enumeration;
 import osp.Utilities.*;
@@ -38,7 +39,9 @@ public class ThreadCB extends IflThreadCB
 {
 
     private static PriorityQueue<ThreadCB> thread_queue;
-    private double total_time;
+    private static ThreadCB timing_thread;
+    private long total_time;
+
     /**
        The thread constructor. Must call 
 
@@ -52,8 +55,7 @@ public class ThreadCB extends IflThreadCB
     {
         super();
         //each thread will have a total_time counter at 0
-        total_time = 0;
-
+        this.total_time = 0;
     }
 
     /**
@@ -65,7 +67,17 @@ public class ThreadCB extends IflThreadCB
     public static void init()
     {
 
-        thread_queue = new PriorityQueue<ThreadCB>();
+        thread_queue = new PriorityQueue<ThreadCB>(new Comparator<ThreadCB>(){
+            @Override
+            public int compare(ThreadCB a, ThreadCB b){
+                if(a.getTime() > b.getTime())
+                    return 1;
+                else if(a.getTime() < b.getTime())
+                    return -1;
+                else
+                    return 0;
+        }
+        });
 
     }
 
@@ -97,9 +109,10 @@ public class ThreadCB extends IflThreadCB
         ThreadCB newThread = new ThreadCB();
         newThread.setStatus(ThreadReady);
         
+        /*
         if(task.getStatus() == TaskTerm){
             return null;
-        }
+        }*/
 
         newThread.setPriority(task.getPriority());
         newThread.setTask(task);
@@ -136,6 +149,7 @@ public class ThreadCB extends IflThreadCB
             thread_queue.remove(this);
         }
         else if(getStatus() == ThreadRunning){
+            //kill that specific that specific thread (not the process of the table)
             MMU.getPTBR().getTask().setCurrentThread(null);
         }
         //nothing special to do for ThreadWaiting
@@ -154,7 +168,6 @@ public class ThreadCB extends IflThreadCB
         if(getTask().getThreadCount() == 0){
             getTask().kill();
         }
-
 
     }
 
@@ -181,12 +194,12 @@ public class ThreadCB extends IflThreadCB
             //set the current thread to null
             getTask().setCurrentThread(null);
         }
-        else if(getStatus() == ThreadWaiting){
+        else if(getStatus() >= ThreadWaiting){
             setStatus(getStatus() + 1); //check this
         }
 
         event.addThread(this);
-        thread_queue.remove(this);
+        thread_queue.remove(this); //will be added back in the resume method
         dispatch();
 
     }
@@ -235,48 +248,60 @@ public class ThreadCB extends IflThreadCB
 
         ThreadCB start_thread = null;
 
-
-
         try{
             start_thread = MMU.getPTBR().getTask().getCurrentThread();
+
+            //THE CURRENT THREAD IS EITHER FINISHED BY 100 OR AUTOMATICALLY
+            long five = start_thread.getTime(); //how long has the thread been running so far
+            long running = (long) start_thread.getTimeOnCPU();
+            start_thread.setTime(five + running);
+            
         }catch(Exception e){
-            System.out.print("This is a null starting thread");
+            System.out.print("This is a null starting thread. \n");
         }
 
-        //USE THE PRIORITIES TO START AND STOP THREADS!
-        //CURRENTLY ROBIN
 
-        //If the current thread is not null, set it to ThreadReady
+        //CONTEXT SWITCH
+
+        //Pre-Emptying a Thread (ThreadRunning -> ThreadReady)
         if(start_thread != null){
-            MMU.getPTBR().getTask().setCurrentThread(null);
+            start_thread.setStatus(ThreadReady); //HOW TO CHECK IF IT'S WAITING FOR I/O (THREADWAITING)
+            MMU.getPTBR().getTask().setCurrentThread(null); //Last Step (does this make sense though?)
             MMU.setPTBR(null);
-            start_thread.setStatus(ThreadReady);
             thread_queue.add(start_thread);
         }
 
-        ThreadCB activate_thread = null;
-        double lesser = Double.MAX_VALUE;
+        //PICKING THE THREAD WITH THE LEAST CPU TIME TO RUN
+        timing_thread = null;
+        long lesser = Long.MAX_VALUE;
         //WE WANT TO RUN THE THREAD WITH THE LEAST CPU TIME USED!
         for(ThreadCB element: thread_queue){
             if(element.getTime() < lesser){
                 lesser = element.getTime();
-                activate_thread = element;
+                timing_thread = element;
             }
         }
 
-        if(thread_queue.size() > 0){
-            thread_queue.remove(activate_thread); //CHANGE THIS TO THE ONE WITH THE MOST PRIORITY
-            MMU.setPTBR(activate_thread.getTask().getPageTable());
-            activate_thread.getTask().setCurrentThread(activate_thread);
-            activate_thread.setStatus(ThreadRunning);
-            HTimer.set(100);
-            activate_thread.setTime(activate_thread.getTimeOnCPU());
-
-            return SUCCESS;
+        if(thread_queue.isEmpty()){
+            MMU.setPTBR(null);
+            return FAILURE;
         }
 
-        MMU.setPTBR(null);
-        return FAILURE;
+        //Dispatching a Thread (ThreadReady -> ThreadRunning)
+        thread_queue.remove(timing_thread); //removing from the ready queue
+
+        MMU.setPTBR(timing_thread.getTask().getPageTable());
+        timing_thread.getTask().setCurrentThread(timing_thread);
+
+        timing_thread.setStatus(ThreadRunning);
+        HTimer.set(100);
+
+        //ASSUMING EXECUTION IS OVER
+        //timing_thread.setTime(timing_thread.getTimeOnCPU());
+        //if it's 100 units, pre-empty the thread here
+
+        return SUCCESS;
+
 
     }
 
@@ -307,11 +332,11 @@ public class ThreadCB extends IflThreadCB
 
     }
 
-    public double getTime(){
+    public long getTime(){
         return total_time;
     }
 
-    public void setTime(double total_time){
+    public void setTime(long total_time){
         this.total_time = total_time;
     }
 
