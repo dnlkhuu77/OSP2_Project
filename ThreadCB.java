@@ -39,7 +39,6 @@ public class ThreadCB extends IflThreadCB
 {
 
     private static PriorityQueue<ThreadCB> thread_queue;
-    private static ThreadCB timing_thread;
     private long total_time;
     private long startTime;
     private long endTime;
@@ -147,8 +146,17 @@ public class ThreadCB extends IflThreadCB
             thread_queue.remove(this);
         }
         else if(this.getStatus() == ThreadRunning){
-            //kill that specific that specific thread (not the process of the table)
-            MMU.getPTBR().getTask().setCurrentThread(null);
+            ThreadCB removeThread = null;
+
+            try{
+                removeThread = MMU.getPTBR().getTask().getCurrentThread();
+                if(this == removeThread){
+                    MMU.getPTBR().getTask().setCurrentThread(null);
+                    MMU.setPTBR(null);
+                }
+            }catch(Exception e){
+                System.out.println("The running thread is null");
+            }
         }
         //nothing special to do for ThreadWaiting
 
@@ -158,6 +166,7 @@ public class ThreadCB extends IflThreadCB
         }
 
         this.setStatus(ThreadKill);
+        getTask().removeThread(this);
 
         ResourceCB.giveupResources(this);
 
@@ -255,6 +264,7 @@ public class ThreadCB extends IflThreadCB
         //After 100 units of time, it will be startTime + 100. For setting timer, use HTimer class.
 
         ThreadCB preempty_thread = null;
+        ThreadCB timing_thread = null;
 
         try{
             //getting the current thread so that we can pre-empty it
@@ -284,39 +294,39 @@ public class ThreadCB extends IflThreadCB
             thread_queue.add(preempty_thread);
         }
 
-        if(thread_queue.isEmpty()){
-            MMU.setPTBR(null);
-            return FAILURE;
+        if(!thread_queue.isEmpty()){
+            //Dispatching a Thread (ThreadReady -> ThreadRunning)
+            //timing_thread = thread_queue.poll(); //removing from the ready queue
+
+            
+            //PICKING THE THREAD WITH THE LEAST CPU TIME TO RUN
+            timing_thread = null;
+            long lesser = Long.MAX_VALUE;
+            //WE WANT TO RUN THE THREAD WITH THE LEAST CPU TIME USED!
+            for(ThreadCB element: thread_queue){
+                if(element.getTime() < lesser){
+                    lesser = element.getTime();
+                    timing_thread = element;
+                }
+            }
+            thread_queue.remove(timing_thread);
+
+            MMU.setPTBR(timing_thread.getTask().getPageTable());
+            timing_thread.getTask().setCurrentThread(timing_thread);
+
+            timing_thread.setStatus(ThreadRunning);
+            timing_thread.setTime(HClock.get());
+            HTimer.set(100);
+
+            //ASSUMING EXECUTION IS OVER
+            //timing_thread.setTime(timing_thread.getTimeOnCPU());
+            //if it's 100 units, pre-empty the thread here
+
+            return SUCCESS;
         }
 
-        //Dispatching a Thread (ThreadReady -> ThreadRunning)
-        timing_thread = thread_queue.poll(); //removing from the ready queue
-
-        /*
-        //PICKING THE THREAD WITH THE LEAST CPU TIME TO RUN
-        timing_thread = null;
-        long lesser = Long.MAX_VALUE;
-        //WE WANT TO RUN THE THREAD WITH THE LEAST CPU TIME USED!
-        for(ThreadCB element: thread_queue){
-            if(element.getTime() < lesser){
-                lesser = element.getTime();
-                timing_thread = element;
-            }
-        }*/
-
-        MMU.setPTBR(timing_thread.getTask().getPageTable());
-        timing_thread.getTask().setCurrentThread(timing_thread);
-
-        timing_thread.setStatus(ThreadRunning);
-        timing_thread.setTime(HClock.get());
-        HTimer.set(100);
-
-        //ASSUMING EXECUTION IS OVER
-        //timing_thread.setTime(timing_thread.getTimeOnCPU());
-        //if it's 100 units, pre-empty the thread here
-
-        return SUCCESS;
-
+        MMU.setPTBR(null);
+        return FAILURE;
 
     }
 
