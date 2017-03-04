@@ -42,6 +42,7 @@ public class ThreadCB extends IflThreadCB
     private long total_time;
     private long startTime;
     private long endTime;
+    static boolean checkIO;
 
     /**
        The thread constructor. Must call 
@@ -70,6 +71,7 @@ public class ThreadCB extends IflThreadCB
     public static void init()
     {
 
+        checkIO = false;
         thread_queue = new PriorityQueue<ThreadCB>(new Comparator<ThreadCB>(){
             @Override
             public int compare(ThreadCB a, ThreadCB b){
@@ -104,7 +106,8 @@ public class ThreadCB extends IflThreadCB
     static public ThreadCB do_create(TaskCB task)
     {
 
-        if(task.getThreadCount() >= MaxThreadsPerTask || task == null){
+        if(task.getThreadCount() >= MaxThreadsPerTask && task == null){
+            checkIO = true;
             dispatch(); //we do this, so the next call will work!
             return null;
         }
@@ -115,11 +118,13 @@ public class ThreadCB extends IflThreadCB
         newThread.setTask(task);
 
         if(task.addThread(newThread) == FAILURE){
+            checkIO = true;
             dispatch();
             return null;
         }
 
         thread_queue.add(newThread);
+        checkIO = true;
         dispatch();
         return newThread;
 
@@ -165,11 +170,12 @@ public class ThreadCB extends IflThreadCB
             Device.get(i).cancelPendingIO(this);
         }
 
-        this.setStatus(ThreadKill);
+        this.setStatus(ThreadKill); //killing for ALL ThreadReady, ThreadWaiting, and ThreadRunning --> ThreadKill
         getTask().removeThread(this);
 
         ResourceCB.giveupResources(this);
 
+        checkIO = true;
         dispatch(); //dispatch a new thread
 
         if(getTask().getThreadCount() == 0){
@@ -216,6 +222,7 @@ public class ThreadCB extends IflThreadCB
 
         event.addThread(this);
         thread_queue.remove(this); //will be added back in the resume method
+        checkIO = true;
         dispatch();
 
     }
@@ -240,6 +247,7 @@ public class ThreadCB extends IflThreadCB
             this.setStatus(this.getStatus() - 1);
         }
 
+        checkIO = true;
         dispatch();
 
     }
@@ -279,19 +287,26 @@ public class ThreadCB extends IflThreadCB
 
         //Pre-Emptying a Thread (ThreadRunning -> ThreadReady)
         if(preempty_thread != null){
-                //THE CURRENT THREAD IS EITHER FINISHED BY 100 OR AUTOMATICALLY
-                long stoppingTime = HClock.get();
-                preempty_thread.setEndTime(stoppingTime);
+            //THE CURRENT THREAD IS EITHER FINISHED BY 100 OR AUTOMATICALLY
+            long stoppingTime = HClock.get();
+            preempty_thread.setEndTime(stoppingTime);
 
-                long start = preempty_thread.getStartTime();
-                long previousTime = preempty_thread.getTime();
+            long start = preempty_thread.getStartTime();
+            long previousTime = preempty_thread.getTime();
 
-                preempty_thread.setTime(previousTime + (stoppingTime - start));
-
-            preempty_thread.setStatus(ThreadReady); //HOW TO CHECK IF IT'S WAITING FOR I/O (THREADWAITING)
-            MMU.getPTBR().getTask().setCurrentThread(null); //Last Step (does this make sense though?)
-            MMU.setPTBR(null);
-            thread_queue.add(preempty_thread);
+            preempty_thread.setTime(previousTime + (stoppingTime - start));
+  
+            //if(checkIO == true){
+                preempty_thread.setStatus(ThreadReady); //HOW TO CHECK IF IT'S WAITING FOR I/O (THREADWAITING)
+                MMU.getPTBR().getTask().setCurrentThread(null); //Last Step (does this make sense though?)
+                MMU.setPTBR(null);
+                thread_queue.add(preempty_thread);
+                //checkIO = false;
+            //}else{ //IOs
+               // preempty_thread.setStatus(ThreadWaiting); //Threads are waiting for I/Os
+                //MMU.getPTBR().getTask().setCurrentThread(null);
+                //MMU.setPTBR(null);
+            //}
         }
 
         if(!thread_queue.isEmpty()){
@@ -315,12 +330,8 @@ public class ThreadCB extends IflThreadCB
             timing_thread.getTask().setCurrentThread(timing_thread);
 
             timing_thread.setStatus(ThreadRunning);
-            timing_thread.setTime(HClock.get());
+            timing_thread.setStartTime(HClock.get());
             HTimer.set(100);
-
-            //ASSUMING EXECUTION IS OVER
-            //timing_thread.setTime(timing_thread.getTimeOnCPU());
-            //if it's 100 units, pre-empty the thread here
 
             return SUCCESS;
         }
