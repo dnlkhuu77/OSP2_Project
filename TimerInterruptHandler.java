@@ -1,6 +1,9 @@
 //Name: Daniel Khuu
 //ID: 109372156
 
+//I pledge my honor that all parts of this project were done by me individually
+//and without collaboration with anybody else.
+
 package osp.Threads;
 
 import osp.IFLModules.*;
@@ -23,7 +26,7 @@ public class TimerInterruptHandler extends IflTimerInterruptHandler
     */
     public void do_handleInterrupt()
     {
-        // your code goes here
+        ThreadCB.dispatch();
 
     }
 

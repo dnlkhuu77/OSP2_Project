@@ -47,7 +47,7 @@ public class ThreadCB extends IflThreadCB
     /**
        The thread constructor. Must call 
 
-       	   super();
+           super();
 
        as its first statement.
 
@@ -56,7 +56,7 @@ public class ThreadCB extends IflThreadCB
     public ThreadCB()
     {
         super();
-        //each thread will have a total_time counter at 0
+        //each thread will have a total_time counter, which will store how much time each thread was running for
         this.total_time = 0;
         this.startTime = 0;
         this.endTime = 0;
@@ -94,19 +94,19 @@ public class ThreadCB extends IflThreadCB
         so does this method, otherwise, the thread is appended 
         to the ready queue and dispatch() is called.
 
-	The priority of the thread can be set using the getPriority/setPriority
-	methods. However, OSP itself doesn't care what the actual value of
-	the priority is. These methods are just provided in case priority
-	scheduling is required.
+    The priority of the thread can be set using the getPriority/setPriority
+    methods. However, OSP itself doesn't care what the actual value of
+    the priority is. These methods are just provided in case priority
+    scheduling is required.
 
-	@return thread or null
+    @return thread or null
 
         @OSPProject Threads
     */
     static public ThreadCB do_create(TaskCB task)
     {
 
-        if(task.getThreadCount() >= MaxThreadsPerTask && task == null){
+        if(task.getThreadCount() >= MaxThreadsPerTask || task == null){
             checkIO = true;
             dispatch(); //we do this, so the next call will work!
             return null;
@@ -131,17 +131,17 @@ public class ThreadCB extends IflThreadCB
     }
 
     /** 
-	Kills the specified thread. 
+    Kills the specified thread. 
 
-	The status must be set to ThreadKill, the thread must be
-	removed from the task's list of threads and its pending IORBs
-	must be purged from all device queues.
+    The status must be set to ThreadKill, the thread must be
+    removed from the task's list of threads and its pending IORBs
+    must be purged from all device queues.
         
-	If some thread was on the ready queue, it must removed, if the 
-	thread was running, the processor becomes idle, and dispatch() 
-	must be called to resume a waiting thread.
-	
-	@OSPProject Threads
+    If some thread was on the ready queue, it must removed, if the 
+    thread was running, the processor becomes idle, and dispatch() 
+    must be called to resume a waiting thread.
+    
+    @OSPProject Threads
     */
     public void do_kill()
     {
@@ -160,7 +160,7 @@ public class ThreadCB extends IflThreadCB
                     MMU.setPTBR(null);
                 }
             }catch(Exception e){
-                System.out.println("The running thread is null");
+                //EXCEPTION.
             }
         }
         //nothing special to do for ThreadWaiting
@@ -190,13 +190,13 @@ public class ThreadCB extends IflThreadCB
         Note that the thread being suspended doesn't need to be
         running. It can also be waiting for completion of a pagefault
         and be suspended on the IORB that is bringing the page in.
-	
-	Thread's status must be changed to ThreadWaiting or higher,
+    
+    Thread's status must be changed to ThreadWaiting or higher,
         the processor set to idle, the thread must be in the right
         waiting queue, and dispatch() must be called to give CPU
         control to some other thread.
 
-	@param event - event on which to suspend this thread.
+    @param event - event on which to suspend this thread.
 
         @OSPProject Threads
     */
@@ -207,7 +207,7 @@ public class ThreadCB extends IflThreadCB
             //set the current thread to null
             this.getTask().setCurrentThread(null);
 
-            //TIME-RELATED STUFF
+            //Calculating how long the thread has been running for and storing it
             long stoppingTime = HClock.get();
             this.setEndTime(stoppingTime);
 
@@ -229,18 +229,20 @@ public class ThreadCB extends IflThreadCB
 
     /** Resumes the thread.
         
-	Only a thread with the status ThreadWaiting or higher
-	can be resumed.  The status must be set to ThreadReady or
-	decremented, respectively.
-	A ready thread should be placed on the ready queue.
-	
-	@OSPProject Threads
+    Only a thread with the status ThreadWaiting or higher
+    can be resumed.  The status must be set to ThreadReady or
+    decremented, respectively.
+    A ready thread should be placed on the ready queue.
+    
+    @OSPProject Threads
     */
     public void do_resume()
     {
         if(this.getStatus() == ThreadWaiting){
             this.setStatus(ThreadReady);
             thread_queue.add(this);
+
+            //reset the start time of the thread
             this.setStartTime(HClock.get());
         }
         else{
@@ -260,16 +262,14 @@ public class ThreadCB extends IflThreadCB
 
         In addition to setting the correct thread status it must
         update the PTBR.
-	
-	@return SUCCESS or FAILURE
+    
+    @return SUCCESS or FAILURE
 
         @OSPProject Threads
     */
     public static int do_dispatch()
     {
-        //THE THREAD IS SCHEDULED USING CPU TIME
-        //I think startTime = HClock.get() returns the hardware time in long. 
-        //After 100 units of time, it will be startTime + 100. For setting timer, use HTimer class.
+        //THE THREAD IS SCHEDULED USING CPU TIME PRIORITY
 
         ThreadCB preempty_thread = null;
         ThreadCB timing_thread = null;
@@ -279,7 +279,7 @@ public class ThreadCB extends IflThreadCB
             preempty_thread = MMU.getPTBR().getTask().getCurrentThread();
             
         }catch(Exception e){
-            System.out.print("This is a null starting thread. \n");
+            //EXCEPTION
         }
 
 
@@ -298,7 +298,7 @@ public class ThreadCB extends IflThreadCB
   
             //if(checkIO == true){
                 preempty_thread.setStatus(ThreadReady); //HOW TO CHECK IF IT'S WAITING FOR I/O (THREADWAITING)
-                MMU.getPTBR().getTask().setCurrentThread(null); //Last Step (does this make sense though?)
+                MMU.getPTBR().getTask().setCurrentThread(null);
                 MMU.setPTBR(null);
                 thread_queue.add(preempty_thread);
                 //checkIO = false;
@@ -311,8 +311,6 @@ public class ThreadCB extends IflThreadCB
 
         if(!thread_queue.isEmpty()){
             //Dispatching a Thread (ThreadReady -> ThreadRunning)
-            //timing_thread = thread_queue.poll(); //removing from the ready queue
-
             
             //PICKING THE THREAD WITH THE LEAST CPU TIME TO RUN
             timing_thread = null;
