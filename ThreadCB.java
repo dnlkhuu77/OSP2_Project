@@ -242,8 +242,6 @@ public class ThreadCB extends IflThreadCB
             this.setStatus(ThreadReady);
             thread_queue.add(this);
 
-            //reset the start time of the thread
-            this.setStartTime(HClock.get());
         }
         else{
             this.setStatus(this.getStatus() - 1);
