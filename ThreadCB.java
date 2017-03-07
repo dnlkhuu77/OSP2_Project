@@ -109,9 +109,9 @@ public class ThreadCB extends IflThreadCB
         }
         
         ThreadCB newThread = new ThreadCB();
-        newThread.setStatus(ThreadReady);
         newThread.setPriority(task.getPriority());
         newThread.setTask(task);
+        newThread.setStatus(ThreadReady);
 
         if(task.addThread(newThread) == FAILURE){
             dispatch();
