@@ -72,9 +72,9 @@ public class ThreadCB extends IflThreadCB
         thread_queue = new PriorityQueue<ThreadCB>(new Comparator<ThreadCB>(){
             @Override
             public int compare(ThreadCB a, ThreadCB b){
-                if(a.getTime() < b.getTime()) //the lower CPU time gets the higher priority
+                if(a.getTime() > b.getTime()) //the lower CPU time gets the higher priority
                     return 1;
-                else if(a.getTime() > b.getTime())
+                else if(a.getTime() < b.getTime())
                     return -1;
                 else
                     return 0;
@@ -162,7 +162,7 @@ public class ThreadCB extends IflThreadCB
             Device.get(i).cancelPendingIO(this);
         }
 
-        //System.out.println("KILLED " + this.getTime()); 
+        System.out.println("KILLED " + this.getTime()); 
         this.setStatus(ThreadKill); //killing for ALL ThreadReady, ThreadWaiting, and ThreadRunning --> ThreadKill
         getTask().removeThread(this);
 
@@ -291,17 +291,8 @@ public class ThreadCB extends IflThreadCB
         if(!thread_queue.isEmpty()){
             //Dispatching a Thread (ThreadReady -> ThreadRunning)
             
-            //PICKING THE THREAD WITH THE LEAST CPU TIME TO RUN
-            timing_thread = null;
-            long lesser = Long.MAX_VALUE;
-            //WE WANT TO RUN THE THREAD WITH THE LEAST CPU TIME USED!
-            for(ThreadCB element: thread_queue){
-                if(element.getTime() < lesser){
-                    lesser = element.getTime();
-                    timing_thread = element;
-                }
-            }
-            thread_queue.remove(timing_thread);
+            //PICKING THE THREAD WITH THE LEAST CPU TIME TO RUN FROM THE PRIORITYQUEUE
+            timing_thread = thread_queue.poll();
 
             MMU.setPTBR(timing_thread.getTask().getPageTable());
             timing_thread.getTask().setCurrentThread(timing_thread);
