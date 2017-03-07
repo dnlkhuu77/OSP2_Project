@@ -42,7 +42,6 @@ public class ThreadCB extends IflThreadCB
     private long total_time;
     private long startTime;
     private long endTime;
-    static boolean checkIO;
 
     /**
        The thread constructor. Must call 
@@ -70,8 +69,6 @@ public class ThreadCB extends IflThreadCB
     */
     public static void init()
     {
-
-        checkIO = false;
         thread_queue = new PriorityQueue<ThreadCB>(new Comparator<ThreadCB>(){
             @Override
             public int compare(ThreadCB a, ThreadCB b){
@@ -107,7 +104,6 @@ public class ThreadCB extends IflThreadCB
     {
 
         if(task.getThreadCount() >= MaxThreadsPerTask || task == null){
-            checkIO = true;
             dispatch(); //we do this, so the next call will work!
             return null;
         }
@@ -118,13 +114,11 @@ public class ThreadCB extends IflThreadCB
         newThread.setTask(task);
 
         if(task.addThread(newThread) == FAILURE){
-            checkIO = true;
             dispatch();
             return null;
         }
 
         thread_queue.add(newThread);
-        checkIO = true;
         dispatch();
         return newThread;
 
@@ -145,14 +139,12 @@ public class ThreadCB extends IflThreadCB
     */
     public void do_kill()
     {
-        //REMAINDER: looping through devics and make sure all pending Ios are killed
-
+        
         if(this.getStatus() == ThreadReady){
             thread_queue.remove(this);
         }
         else if(this.getStatus() == ThreadRunning){
             ThreadCB removeThread = null;
-
             try{
                 removeThread = MMU.getPTBR().getTask().getCurrentThread();
                 if(this == removeThread){
@@ -170,12 +162,12 @@ public class ThreadCB extends IflThreadCB
             Device.get(i).cancelPendingIO(this);
         }
 
+        //System.out.println("KILLED " + this.getTime()); 
         this.setStatus(ThreadKill); //killing for ALL ThreadReady, ThreadWaiting, and ThreadRunning --> ThreadKill
         getTask().removeThread(this);
 
         ResourceCB.giveupResources(this);
 
-        checkIO = true;
         dispatch(); //dispatch a new thread
 
         if(getTask().getThreadCount() == 0){
@@ -222,7 +214,6 @@ public class ThreadCB extends IflThreadCB
 
         event.addThread(this);
         thread_queue.remove(this); //will be added back in the resume method
-        checkIO = true;
         dispatch();
 
     }
@@ -241,13 +232,10 @@ public class ThreadCB extends IflThreadCB
         if(this.getStatus() == ThreadWaiting){
             this.setStatus(ThreadReady);
             thread_queue.add(this);
-
         }
         else{
             this.setStatus(this.getStatus() - 1);
         }
-
-        checkIO = true;
         dispatch();
 
     }
@@ -280,12 +268,16 @@ public class ThreadCB extends IflThreadCB
             //EXCEPTION
         }
 
-
         //CONTEXT SWITCH
 
         //Pre-Emptying a Thread (ThreadRunning -> ThreadReady)
         if(preempty_thread != null){
             //THE CURRENT THREAD IS EITHER FINISHED BY 100 OR AUTOMATICALLY
+  
+            preempty_thread.setStatus(ThreadReady);
+            MMU.getPTBR().getTask().setCurrentThread(null);
+            MMU.setPTBR(null);
+
             long stoppingTime = HClock.get();
             preempty_thread.setEndTime(stoppingTime);
 
@@ -293,18 +285,7 @@ public class ThreadCB extends IflThreadCB
             long previousTime = preempty_thread.getTime();
 
             preempty_thread.setTime(previousTime + (stoppingTime - start));
-  
-            //if(checkIO == true){
-                preempty_thread.setStatus(ThreadReady); //HOW TO CHECK IF IT'S WAITING FOR I/O (THREADWAITING)
-                MMU.getPTBR().getTask().setCurrentThread(null);
-                MMU.setPTBR(null);
-                thread_queue.add(preempty_thread);
-                //checkIO = false;
-            //}else{ //IOs
-               // preempty_thread.setStatus(ThreadWaiting); //Threads are waiting for I/Os
-                //MMU.getPTBR().getTask().setCurrentThread(null);
-                //MMU.setPTBR(null);
-            //}
+            thread_queue.add(preempty_thread);
         }
 
         if(!thread_queue.isEmpty()){
