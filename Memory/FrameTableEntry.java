@@ -1,3 +1,9 @@
+/*Name: Daniel Khuu
+ID: 109372156
+
+I pledge my honor that all parts of this project were done by me individually
+and without collaboration with anybody else.*/
+
 package osp.Memory;
 
 /**
@@ -24,7 +30,7 @@ public class FrameTableEntry extends IflFrameTableEntry
     */
     public FrameTableEntry(int frameID)
     {
-        // your code goes here
+        super(frameID);
 
     }
 

@@ -1,3 +1,9 @@
+/*Name: Daniel Khuu
+ID: 109372156
+
+I pledge my honor that all parts of this project were done by me individually
+and without collaboration with anybody else.*/
+
 package osp.Memory;
 
 import java.util.*;
@@ -52,6 +58,7 @@ public class MMU extends IflMMU
 					  int referenceType, ThreadCB thread)
     {
         // your code goes here
+        return null;
 
     }
 

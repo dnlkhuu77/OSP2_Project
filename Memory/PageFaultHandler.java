@@ -1,3 +1,9 @@
+/*Name: Daniel Khuu
+ID: 109372156
+
+I pledge my honor that all parts of this project were done by me individually
+and without collaboration with anybody else.*/
+
 package osp.Memory;
 import java.util.*;
 import osp.Hardware.*;
@@ -77,6 +83,7 @@ public class PageFaultHandler extends IflPageFaultHandler
 					 PageTableEntry page)
     {
         // your code goes here
+        return 1;
 
     }
 

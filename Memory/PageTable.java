@@ -1,3 +1,9 @@
+/*Name: Daniel Khuu
+ID: 109372156
+
+I pledge my honor that all parts of this project were done by me individually
+and without collaboration with anybody else.*/
+
 package osp.Memory;
 /**
     The PageTable class represents the page table for a given task.
@@ -26,6 +32,7 @@ public class PageTable extends IflPageTable
     public PageTable(TaskCB ownerTask)
     {
         // your code goes here
+        return null;
 
     }
 
