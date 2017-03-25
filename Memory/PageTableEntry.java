@@ -33,7 +33,7 @@ public class PageTableEntry extends IflPageTableEntry
     */
     public PageTableEntry(PageTable ownerPageTable, int pageNumber)
     {
-        // your code goes here
+        super(ownerPageTable, pageNumber);
 
     }
 
@@ -54,8 +54,22 @@ public class PageTableEntry extends IflPageTableEntry
      */
     public int do_lock(IORB iorb)
     {
-        // your code goes here
-        return 1;
+        ThreadCB thr = iorb.getThread();
+
+        if(isValid() == false){ //we must initiate a pagefault
+        	if(getValidatingThread() == null){
+        		PageFaultHandler.handlePageFault(thr, GlobalVariables.MemoryLock, this);
+        	}else{
+        		if(getValidatingThread() != thr){
+        			thr.suspend(this);
+        			if(thr.getStatus() == GlobalVariables.ThreadKill)
+        				return GlobalVariables.FAILURE;
+        		}
+        	}
+        }
+
+        getFrame().incrementLockCount();
+        return GlobalVariables.SUCCESS;
 
     }
 
@@ -67,7 +81,7 @@ public class PageTableEntry extends IflPageTableEntry
     */
     public void do_unlock()
     {
-        // your code goes here
+        getFrame().decrementLockCount();
 
     }
 
