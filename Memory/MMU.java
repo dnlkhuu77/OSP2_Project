@@ -31,7 +31,9 @@ public class MMU extends IflMMU
     */
     public static void init()
     {
-        // your code goes here
+        for(int i = 0; i < MMU.getFrameTableSize(); i++){
+        	MMU.setFrame(i, new FrameTableEntry(i));
+        }
 
     }
 
