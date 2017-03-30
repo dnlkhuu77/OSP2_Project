@@ -56,16 +56,17 @@ public class PageTableEntry extends IflPageTableEntry
     {
         ThreadCB thr = iorb.getThread();
 
-        if(isValid() == false){ //the page is invalid
-        	if(getValidatingThread() == null){
-        		PageFaultHandler.handlePageFault(thr, MemoryLock, this);
-        	}else if (getValidatingThread() != thr){
-        		thr.suspend(this);
-        	}
+        if(thr.getStatus() == ThreadKill){
+          return FAILURE;
         }
 
-        if(thr.getStatus() == ThreadKill){
-        	return FAILURE;
+        if(isValid() == false){ //the validity bit of the page is not valid
+          //pagefault must be initialed
+        	if(getValidatingThread() == null){ //page is not involved in pagefault
+        		PageFaultHandler.handlePageFault(thr, MemoryLock, this);
+        	}else if (getValidatingThread() != thr){ //we must wait until the page is valid
+        		thr.suspend(this);
+        	}
         }
 
         getFrame().incrementLockCount();
