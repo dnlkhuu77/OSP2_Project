@@ -59,8 +59,40 @@ public class MMU extends IflMMU
     static public PageTableEntry do_refer(int memoryAddress,
 					  int referenceType, ThreadCB thread)
     {
-        // your code goes here
-        return null;
+        int offset = MMU.getVirtualAddressBits() - MMU.getPageAddressBits();
+        int numPages = (int) MMU.pow(2, offset);
+        int pagesNo = memoryAddress / numPages;
+
+        PageTableEntry page = thread.getTask().getPageTable().pages[pagesNo];
+        if(page.isValid() == false){
+          if(page.getValidatingThread() == null){
+            InterruptVector.setPage(page);
+            InterruptVector.setReferenceType(referenceType);
+            InterruptVector.setThread(thread);
+            CPU.interrupt(PageFault);
+          }else{
+            thread.suspend(page);
+            if(thread.getStatus() != ThreadKill){
+              page.getFrame().setReferenced(true);
+
+              if(referenceType == MemoryWrite){
+                page.getFrame().setDirty(true);
+              }
+            }
+
+            return page;
+          }
+        }
+
+        //page is valid
+        if(thread.getStatus() != ThreadKill){
+          page.getFrame().setReferenced(true);
+
+          if(referenceType == MemoryWrite){
+            page.getFrame().setDirty(true);
+          }
+        }
+        return page;
 
     }
 
