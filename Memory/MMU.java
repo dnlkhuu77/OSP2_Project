@@ -78,12 +78,14 @@ public class MMU extends IflMMU
                 if(referenceType == MemoryWrite)
                     page.getFrame().setDirty(true);
             }
+            return page;
         }else{ //OPTION 2 || MUST DO A PAGEFAULT
             InterruptVector.setPage(page);
             InterruptVector.setReferenceType(referenceType);
             InterruptVector.setThread(thread);
             CPU.interrupt(PageFault);
         }
+
 
         page.getFrame().setReferenced(true);
         if(referenceType == MemoryWrite)

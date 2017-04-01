@@ -62,6 +62,7 @@ public class PageTableEntry extends IflPageTableEntry
         	}else if (getValidatingThread() != thr){ //we must wait until the page is valid
         		thr.suspend(this);
         	}
+          //if the thread that is pagefaulting is the current thread, we will just increment the lock counter
         }
 
         //if the new thread is ThreadKilled
