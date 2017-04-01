@@ -20,7 +20,7 @@ import osp.Hardware.*;
 
 public class PageTable extends IflPageTable
 {
-	int pagesSize;
+	int numPages;
     /** 
 	The page table constructor. Must call
 	
@@ -34,10 +34,10 @@ public class PageTable extends IflPageTable
     {
         super(ownerTask);
 
-        pagesSize = (int) Math.pow(2, MMU.getPageAddressBits());
-        pages = new PageTableEntry[pagesSize];
+        numPages = (int) Math.pow(2, MMU.getPageAddressBits());
+        pages = new PageTableEntry[numPages];
 
-        for(int i = 0; i < pagesSize; i++){
+        for(int i = 0; i < numPages; i++){
         	pages[i] = new PageTableEntry(this, i);
         }
 
@@ -51,20 +51,20 @@ public class PageTable extends IflPageTable
     */
     public void do_deallocateMemory()
     {
-        for(int i = 0; i < pagesSize; i++){
-        	FrameTableEntry tempFr = pages[i].getFrame();
-        	if(tempFr != null && tempFr.getPage().getTask() == getTask()){
-        		tempFr.setPage(null);
-        		tempFr.setDirty(false);
-        		tempFr.setReferenced(false);
-        	}
-        }
+        TaskCB task = getTask();
 
         for(int i = 0; i < MMU.getFrameTableSize(); i++){
-        	TaskCB task = getTask();
-        	if(MMU.getFrame(i).getReserved() == task){
-        		MMU.getFrame(i).setUnreserved(task);
-        	}
+            FrameTableEntry tempFr = MMU.getFrame(i);
+            PageTableEntry tempPg = tempFr.getPage();
+
+            if(tempPg.getTask() == task && tempPg != null){
+                tempFr.setPage(null);
+                tempFr.setDirty(false);
+                tempFr.setReferenced(false);
+
+                if(tempFr.getReserved() == task)
+                    tempFr.setUnreserved(task);
+            }
         }
 
     }

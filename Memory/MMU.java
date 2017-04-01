@@ -59,39 +59,36 @@ public class MMU extends IflMMU
     static public PageTableEntry do_refer(int memoryAddress,
 					  int referenceType, ThreadCB thread)
     {
-        int offset = MMU.getVirtualAddressBits() - MMU.getPageAddressBits();
-        int numPages = (int) MMU.pow(2, offset);
-        int pagesNo = memoryAddress / numPages;
+        int pagesNum = memoryAddress / (int) Math.pow(2, MMU.getVirtualAddressBits() - MMU.getPageAddressBits());
+        PageTableEntry page = thread.getTask().getPageTable().pages[pagesNum];
 
-        PageTableEntry page = thread.getTask().getPageTable().pages[pagesNo];
-        if(page.isValid() == false){
-          if(page.getValidatingThread() == null){
+        if(page.isValid() == true){
+            if(referenceType == MemoryWrite)
+                page.getFrame().setDirty(true);
+            page.getFrame().setReferenced(true);
+
+            return page;
+        }
+
+        //the page is invalid
+        if(page.getValidatingThread() != null){
+            thread.suspend(page);
+            if(thread.getStatus() != ThreadKill){
+                page.getFrame().setReferenced(true);
+                if(referenceType == MemoryWrite)
+                    page.getFrame().setDirty(true);
+            }
+        }else{ //OPTION 2 || MUST DO A PAGEFAULT
             InterruptVector.setPage(page);
             InterruptVector.setReferenceType(referenceType);
             InterruptVector.setThread(thread);
             CPU.interrupt(PageFault);
-          }else{
-            thread.suspend(page);
-            if(thread.getStatus() != ThreadKill){
-              page.getFrame().setReferenced(true);
-
-              if(referenceType == MemoryWrite){
-                page.getFrame().setDirty(true);
-              }
-            }
-
-            return page;
-          }
         }
 
-        //page is valid
-        if(thread.getStatus() != ThreadKill){
-          page.getFrame().setReferenced(true);
-
-          if(referenceType == MemoryWrite){
+        page.getFrame().setReferenced(true);
+        if(referenceType == MemoryWrite)
             page.getFrame().setDirty(true);
-          }
-        }
+
         return page;
 
     }

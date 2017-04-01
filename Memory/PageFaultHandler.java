@@ -82,8 +82,65 @@ public class PageFaultHandler extends IflPageFaultHandler
 					 int referenceType,
 					 PageTableEntry page)
     {
-        // your code goes here
-        return 1;
+        TaskCB task = thread.getTask();
+
+        if(page.isValid() == true) //anything valid is a failure
+            return FAILURE;
+
+        FrameTableEntry newF = gettingFrames();
+        if(newF == null)
+            return NotEnoughMemory;
+
+        Event event = new SystemEvent("PageFaultHappened"); //change this
+        thread.suspend(event);
+
+        page.setValidatingThread(thread);
+        newF.setReserved(thread.getTask());
+
+        PageTableEntry newP = newF.getPage();
+        if(newP != null){
+            if(newF.isDirty() == true){
+                swapOut(thread, newF);
+
+                if(thread.getStatus() == ThreadKill){
+                    page.notifyThreads();
+                    event.notifyThreads();
+                    ThreadCB.dispatch();
+                    return FAILURE;
+                }
+                newF.setDirty(false);
+            }
+            newF.setReferenced(false);
+            newF.setPage(null);
+            newP.setValid(false);
+            newP.setFrame(null);
+        }
+
+        page.setFrame(newF);
+        swapIn(thread, page);
+        if(thread.getStatus() == ThreadKill){
+            if(newF.getPage() != null){
+                if(newF.getPage().getTask() == thread.getTask())
+                    newF.setPage(null);
+            }
+            page.notifyThreads();
+            page.setValidatingThread(null);
+            page.setFrame(null);
+            event.notifyThreads();
+            ThreadCB.dispatch();
+            return FAILURE;
+        }
+
+        newF.setPage(page);
+        page.setValid(true);
+        if(newF.getReserved() == task)
+            newF.setUnreserved(task);
+
+        page.setValidatingThread(null);
+        page.notifyThreads();
+        event.notifyThreads();
+        ThreadCB.dispatch();
+        return SUCCESS;
 
     }
 
@@ -91,6 +148,47 @@ public class PageFaultHandler extends IflPageFaultHandler
     /*
        Feel free to add methods/fields to improve the readability of your code
     */
+
+    public static FrameTableEntry gettingFrames(){
+        FrameTableEntry newF = null;
+        PageTableEntry newP = null;
+
+        for(int i = 0; i < MMU.getFrameTableSize(); i++){
+            newF = MMU.getFrame(i);
+            if((newF.getPage() == null) && (!newF.isReserved()) && (newF.getLockCount() == 0))
+                return newF;
+        }
+
+        for(int i = 0; i < MMU.getFrameTableSize(); i++){
+            newF = MMU.getFrame(i);
+            if((!newF.isDirty()) && (!newF.isReserved()) && (newF.getLockCount() == 0)){
+                return newF;
+            }
+        }
+
+        for(int i = 0; i < MMU.getFrameTableSize(); i++){
+            newF = MMU.getFrame(i);
+            if((!newF.isReserved()) && (newF.getLockCount() == 0)){
+                return newF;
+            }
+        }
+
+        //the last for loop is for time
+        newF = MMU.getFrame(MMU.getFrameTableSize() - 1);
+        return newF;
+        
+    }
+
+    public static void swapIn(ThreadCB thread, PageTableEntry page){
+        TaskCB newTask = page.getTask();
+        newTask.getSwapFile().read(page.getID(), page, thread);
+    }
+
+    public static void swapOut(ThreadCB thread, FrameTableEntry frame){
+        PageTableEntry newP = frame.getPage();
+        TaskCB newTask = newP.getTask();
+        newTask.getSwapFile().write(newP.getID(), newP, thread);
+    }
 
 }
 
