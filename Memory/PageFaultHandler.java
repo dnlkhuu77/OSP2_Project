@@ -151,7 +151,9 @@ public class PageFaultHandler extends IflPageFaultHandler
 
     public static FrameTableEntry gettingFrames(){
         FrameTableEntry newF = null;
-        PageTableEntry newP = null;
+        FrameTableEntry maxF = null; //this is the frame least recently used
+        PageTableEntry newP = null; //for LRU
+        long max = -99; //used to calculate the LRU
 
         for(int i = 0; i < MMU.getFrameTableSize(); i++){
             newF = MMU.getFrame(i);
@@ -173,9 +175,16 @@ public class PageFaultHandler extends IflPageFaultHandler
             }
         }
 
-        //the last for loop is for time
-        newF = MMU.getFrame(MMU.getFrameTableSize() - 1);
-        return newF;
+        
+        for(int i = 0; i < MMU.getFrameTableSize(); i++){
+            newF = MMU.getFrame(i);
+            newP = newF.getPage();
+            if(Math.abs(HClock.get() - newP.getTime()) > max){
+                maxF = newF;
+                max = Math.abs(HClock.get() - newP.getTime());
+            }
+        }
+        return maxF;
         
     }
 

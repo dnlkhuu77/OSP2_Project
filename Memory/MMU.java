@@ -59,26 +59,30 @@ public class MMU extends IflMMU
     static public PageTableEntry do_refer(int memoryAddress,
 					  int referenceType, ThreadCB thread)
     {
-        int pagesNum = memoryAddress / (int) Math.pow(2, MMU.getVirtualAddressBits() - MMU.getPageAddressBits());
+        int pagesNum = memoryAddress / (int) Math.pow(2, (MMU.getVirtualAddressBits() - MMU.getPageAddressBits()));
         PageTableEntry page = thread.getTask().getPageTable().pages[pagesNum];
 
         if(page.isValid() == true){
-            if(referenceType == MemoryWrite)
+            if(referenceType == MemoryWrite) //we only set the dirty when the page is being written to
                 page.getFrame().setDirty(true);
             page.getFrame().setReferenced(true);
 
+            //page.lru_time = HClock.get();
+            page.setTime(HClock.get());
             return page;
         }
 
         //the page is invalid
-        if(page.getValidatingThread() != null){
+        if(page.getValidatingThread() != null){ //OPTION 1
             thread.suspend(page);
+
             if(thread.getStatus() != ThreadKill){
                 page.getFrame().setReferenced(true);
                 if(referenceType == MemoryWrite)
                     page.getFrame().setDirty(true);
             }
             return page;
+
         }else{ //OPTION 2 || MUST DO A PAGEFAULT
             InterruptVector.setPage(page);
             InterruptVector.setReferenceType(referenceType);
@@ -86,11 +90,14 @@ public class MMU extends IflMMU
             CPU.interrupt(PageFault);
         }
 
+        if(thread.getStatus() != ThreadKill){
+            page.getFrame().setReferenced(true);
+            if(referenceType == MemoryWrite)
+                page.getFrame().setDirty(true);
+        }
 
-        page.getFrame().setReferenced(true);
-        if(referenceType == MemoryWrite)
-            page.getFrame().setDirty(true);
-
+        //page.lru_time = HClock.get(); //the page was changed, so we need to retake time
+        page.setTime(HClock.get());
         return page;
 
     }

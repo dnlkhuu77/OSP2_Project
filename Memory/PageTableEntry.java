@@ -22,6 +22,7 @@ import osp.IFLModules.*;
 
 public class PageTableEntry extends IflPageTableEntry
 {
+    private long lru_time; //the timer needed to implement the LRU algorithm
     /**
        The constructor. Must call
 
@@ -34,6 +35,7 @@ public class PageTableEntry extends IflPageTableEntry
     public PageTableEntry(PageTable ownerPageTable, int pageNumber)
     {
         super(ownerPageTable, pageNumber);
+        lru_time = HClock.get(); //set the spotwatch needed to do the LRU
 
     }
 
@@ -55,18 +57,22 @@ public class PageTableEntry extends IflPageTableEntry
     public int do_lock(IORB iorb)
     {
         ThreadCB thr = iorb.getThread();
+        this.lru_time = HClock.get(); //reset the watch
 
         if(isValid() == false){ //the validity bit of the page is not valid, pagefault must be initialed
-        	if(getValidatingThread() == null){ //page is not involved in pagefault, make a page
+        	if(getValidatingThread() == null){ //page is not involved in pagefault
         		PageFaultHandler.handlePageFault(thr, MemoryLock, this);
         	}else if (getValidatingThread() != thr){ //we must wait until the page is valid
         		thr.suspend(this);
         	}
-          //if the thread that is pagefaulting is the current thread, we will just increment the lock counter
+          else{
+            getFrame().incrementLockCount();
+            return SUCCESS;
+          }
         }
 
         //if the new thread is ThreadKilled
-        if(thr.getStatus() == ThreadKill){
+        if(isValid() == false || thr.getStatus() == ThreadKill){
           return FAILURE;
         }
 
@@ -91,6 +97,12 @@ public class PageTableEntry extends IflPageTableEntry
     /*
        Feel free to add methods/fields to improve the readability of your code
     */
+    public void setTime(long a){
+      lru_time = a;
+    }
+    public long getTime(){
+      return lru_time;
+    }
 
 }
 
