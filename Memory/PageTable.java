@@ -20,7 +20,6 @@ import osp.Hardware.*;
 
 public class PageTable extends IflPageTable
 {
-	int numPages;
     /** 
 	The page table constructor. Must call
 	
@@ -34,7 +33,7 @@ public class PageTable extends IflPageTable
     {
         super(ownerTask);
 
-        numPages = (int) Math.pow(2, MMU.getPageAddressBits());
+        int numPages = (int) Math.pow(2, MMU.getPageAddressBits());
         pages = new PageTableEntry[numPages];
 
         for(int i = 0; i < numPages; i++){
@@ -52,18 +51,20 @@ public class PageTable extends IflPageTable
     public void do_deallocateMemory()
     {
         TaskCB task = getTask();
+        FrameTableEntry currentFrame = null;
+        PageTableEntry currentPage = null;
 
         for(int i = 0; i < MMU.getFrameTableSize(); i++){
-            FrameTableEntry tempFr = MMU.getFrame(i);
-            PageTableEntry tempPg = tempFr.getPage();
+            currentFrame = MMU.getFrame(i);
+            currentPage = currentFrame.getPage();
 
-            if(tempPg.getTask() == task && tempPg != null){
-                tempFr.setPage(null);
-                tempFr.setDirty(false);
-                tempFr.setReferenced(false);
+            if(currentPage != null && currentPage.getTask() == task){
+                currentFrame.setPage(null);
+                currentFrame.setDirty(false);
+                currentFrame.setReferenced(false);
 
-                if(tempFr.getReserved() == task)
-                    tempFr.setUnreserved(task);
+                if(currentFrame.getReserved() == task)
+                    currentFrame.setUnreserved(task);
             }
         }
 
