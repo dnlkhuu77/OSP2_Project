@@ -67,7 +67,6 @@ public class MMU extends IflMMU
                 page.getFrame().setDirty(true);
             page.getFrame().setReferenced(true);
 
-            //page.lru_time = HClock.get();
             page.setTime(HClock.get());
             return page;
         }
@@ -96,8 +95,7 @@ public class MMU extends IflMMU
                 page.getFrame().setDirty(true);
         }
 
-        //page.lru_time = HClock.get(); //the page was changed, so we need to retake time
-        page.setTime(HClock.get());
+        page.setTime(HClock.get()); //the page was changed, so we need to take another timestamp
         return page;
 
     }
