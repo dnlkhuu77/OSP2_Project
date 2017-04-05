@@ -22,7 +22,7 @@ import osp.IFLModules.*;
 
 public class PageTableEntry extends IflPageTableEntry
 {
-    private long lru_time; //the timer needed to implement the LRU algorithm
+    private long lru_time; //the spotwatch needed to implement the LRU algorithm
     /**
        The constructor. Must call
 
@@ -57,23 +57,25 @@ public class PageTableEntry extends IflPageTableEntry
     public int do_lock(IORB iorb)
     {
         ThreadCB thr = iorb.getThread();
+        int flag = 0;
         this.lru_time = HClock.get(); //reset the watch
 
         if(isValid() == false){ //the validity bit of the page is not valid, pagefault must be initialed
+
         	if(getValidatingThread() == null){ //page is not involved in pagefault
         		PageFaultHandler.handlePageFault(thr, MemoryLock, this);
         	}else if (getValidatingThread() != thr){ //we must wait until the page is valid
         		thr.suspend(this);
         	}
-          else{
-            getFrame().incrementLockCount();
-            return SUCCESS;
+          else{ //the validating thread is the thread
+            flag = 1; //we should skip the verification. Just increment the lock count and return
           }
+          
         }
 
         //if the new thread is ThreadKilled
-        if(isValid() == false || thr.getStatus() == ThreadKill){
-          return FAILURE;
+        if((isValid() == false || thr.getStatus() == ThreadKill) && flag == 0){
+            return FAILURE;
         }
 
         getFrame().incrementLockCount();
