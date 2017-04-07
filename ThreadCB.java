@@ -162,7 +162,7 @@ public class ThreadCB extends IflThreadCB
             Device.get(i).cancelPendingIO(this);
         }
 
-        System.out.println("KILLED " + this.getTime()); 
+        //System.out.println("KILLED " + this.getTime()); 
         this.setStatus(ThreadKill); //killing for ALL ThreadReady, ThreadWaiting, and ThreadRunning --> ThreadKill
         getTask().removeThread(this);
 
