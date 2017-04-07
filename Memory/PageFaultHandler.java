@@ -78,6 +78,8 @@ public class PageFaultHandler extends IflPageFaultHandler
 
         @OSPProject Memory
     */
+        private static int swap_inc = 0; //used to count the number of pages swapped in and out
+        private static int swap_out = 0;
     public static int do_handlePageFault(ThreadCB thread, 
 					 int referenceType,
 					 PageTableEntry page)
@@ -162,7 +164,7 @@ public class PageFaultHandler extends IflPageFaultHandler
             }
         }
 
-        //when the above conditions do not         
+        //all these frames aren't reserved, so we pick pick by LRU algorithm    
         for(int i = 0; i < MMU.getFrameTableSize(); i++){
             newF = MMU.getFrame(i);
             newP = newF.getPage();
@@ -178,12 +180,16 @@ public class PageFaultHandler extends IflPageFaultHandler
     public static void swapIn(ThreadCB thread, PageTableEntry page){
         TaskCB newTask = page.getTask();
         newTask.getSwapFile().read(page.getID(), page, thread);
+        swap_inc++;
+        //System.out.println("S.IN: " + swap_inc);
     }
 
     public static void swapOut(ThreadCB thread, FrameTableEntry frame){
         PageTableEntry newP = frame.getPage();
         TaskCB newTask = newP.getTask();
         newTask.getSwapFile().write(newP.getID(), newP, thread);
+        swap_out++;
+        //System.out.println("S.OUT: " + swap_out);
     }
 
 }
