@@ -82,34 +82,33 @@ public class PageFaultHandler extends IflPageFaultHandler
 					 int referenceType,
 					 PageTableEntry page)
     {
-        TaskCB task = thread.getTask();
-
         if(page.isValid() == true) //anything valid is a failure
             return FAILURE;
 
-        FrameTableEntry newF = gettingFrames();
+        FrameTableEntry newF = gettingFrames(); //must be at the beginning
         if(newF == null)
             return NotEnoughMemory;
 
-        Event event = new SystemEvent("PageFaultHappened"); //change this
+        Event event = new SystemEvent("PageFault");
         thread.suspend(event);
 
         page.setValidatingThread(thread);
         newF.setReserved(thread.getTask());
 
         PageTableEntry newP = newF.getPage();
-        if(newP != null){
-            if(newF.isDirty() == true){
-                swapOut(thread, newF);
+        if(newP != null && newF.isDirty() == true){
+            swapOut(thread, newF);
 
-                if(thread.getStatus() == ThreadKill){
-                    page.notifyThreads();
-                    event.notifyThreads();
-                    ThreadCB.dispatch();
-                    return FAILURE;
-                }
-                newF.setDirty(false);
+            if(thread.getStatus() == ThreadKill){
+                page.notifyThreads();
+                event.notifyThreads();
+                ThreadCB.dispatch();
+                return FAILURE;
             }
+            newF.setDirty(false);
+        }
+
+        if(newP != null){
             newF.setReferenced(false);
             newF.setPage(null);
             newP.setValid(false);
@@ -119,25 +118,25 @@ public class PageFaultHandler extends IflPageFaultHandler
         page.setFrame(newF);
         swapIn(thread, page);
         if(thread.getStatus() == ThreadKill){
-            if(newF.getPage() != null){
-                if(newF.getPage().getTask() == thread.getTask())
+            if((newF.getPage() != null) && (newF.getPage().getTask() == thread.getTask()))
                     newF.setPage(null);
-            }
+
+            event.notifyThreads();
             page.notifyThreads();
             page.setValidatingThread(null);
             page.setFrame(null);
-            event.notifyThreads();
             ThreadCB.dispatch();
             return FAILURE;
         }
 
+        TaskCB task = thread.getTask();
         newF.setPage(page);
         page.setValid(true);
         if(newF.getReserved() == task)
             newF.setUnreserved(task);
-
-        page.setValidatingThread(null);
+        
         page.notifyThreads();
+        page.setValidatingThread(null);
         event.notifyThreads();
         ThreadCB.dispatch();
         return SUCCESS;
@@ -157,31 +156,19 @@ public class PageFaultHandler extends IflPageFaultHandler
 
         for(int i = 0; i < MMU.getFrameTableSize(); i++){
             newF = MMU.getFrame(i);
-            if((newF.getPage() == null) && (!newF.isReserved()) && (newF.getLockCount() == 0))
-                return newF;
-        }
-
-        for(int i = 0; i < MMU.getFrameTableSize(); i++){
-            newF = MMU.getFrame(i);
-            if((!newF.isDirty()) && (!newF.isReserved()) && (newF.getLockCount() == 0)){
-                return newF;
+            if(newF.isReserved() == false){
+                if(newF.getLockCount() == 0)
+                    return newF;
             }
         }
 
-        for(int i = 0; i < MMU.getFrameTableSize(); i++){
-            newF = MMU.getFrame(i);
-            if((!newF.isReserved()) && (newF.getLockCount() == 0)){
-                return newF;
-            }
-        }
-
-        
+        //when the above conditions do not         
         for(int i = 0; i < MMU.getFrameTableSize(); i++){
             newF = MMU.getFrame(i);
             newP = newF.getPage();
-            if(Math.abs(HClock.get() - newP.getTime()) > max){
+            if((HClock.get() - newP.getTime()) > max){ //as we go through the for loop, the frame with the largest difference between stopwatches is the LRU
                 maxF = newF;
-                max = Math.abs(HClock.get() - newP.getTime());
+                max = HClock.get() - newP.getTime();
             }
         }
         return maxF;

@@ -67,7 +67,7 @@ public class MMU extends IflMMU
                 page.getFrame().setDirty(true);
             page.getFrame().setReferenced(true);
 
-            page.setTime(HClock.get());
+            page.setTime(HClock.get()); //you still need to update the stopwatch
             return page;
         }
 
@@ -80,7 +80,7 @@ public class MMU extends IflMMU
                 if(referenceType == MemoryWrite)
                     page.getFrame().setDirty(true);
             }
-            return page;
+            return page; //when you suspend, you don't update the spotwatch, let it flow
 
         }else{ //OPTION 2 || MUST DO A PAGEFAULT
             InterruptVector.setPage(page);
@@ -90,9 +90,9 @@ public class MMU extends IflMMU
         }
 
         if(thread.getStatus() != ThreadKill){
-            page.getFrame().setReferenced(true);
             if(referenceType == MemoryWrite)
                 page.getFrame().setDirty(true);
+            page.getFrame().setReferenced(true);
         }
 
         page.setTime(HClock.get()); //the page was changed, so we need to take another timestamp
