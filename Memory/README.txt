@@ -3,10 +3,10 @@ ID: 109372156
 
 Statistics:
 
-For the Demo, the CPU Utilization is around 63.1% with the average service time per thread of 28910. The average normalized service time per thread is 0.05. And the program swapped in about 1250 pages and swapped out 270 pages.
+There were multiple readings from the multitude of threads, so I will choose the results of the lowest running thread from both programs to explain the difference in statistics between my solution and the Demo.
 
-For my solution, the CPU Utilization is around 86.2% with the average service time per thread of 24232.8. The average normalized service time per thread is 0.05. And the program swapped in about 1000 pages and swapped out 484 pages.
+For the Demo, the CPU Utilization is around 57.5% with the average service time per thread of 37357.76. The average normalized service time per thread is 0.050081514. And the program swapped in about 1200 pages and swapped out 300 pages.
 
-My laptop's fan roared when I ran the Demo; but it was silent when I ran my solution. 
+For my solution, the CPU Utilization is around 81.5% with the average service time per thread of 32236.34. The average normalized service time per thread is 0.0623. And the program swapped in about 1000 pages and swapped out 484 pages.
 
-In other words, the soultion was able to use more CPU to shorten the time it takes memory and threads to do tasks.
+From the results, the solution was able to use more of the CPU to shorten the time it takes memory and threads to do tasks. The average normalized service time was higher for my solution, which is ideal in performance. Overall, the LRU algorithm greatly improved the performance of memory over that used by the Demo.
