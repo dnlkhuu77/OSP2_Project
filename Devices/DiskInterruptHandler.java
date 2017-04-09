@@ -1,3 +1,9 @@
+/*Name: Daniel Khuu
+ID: 109372156
+
+I pledge my honor that all parts of this project were done by me individually
+and without collaboration with anybody else.*/
+
 package osp.Devices;
 import java.util.*;
 import osp.IFLModules.*;

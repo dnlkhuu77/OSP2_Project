@@ -1,3 +1,9 @@
+/*Name: Daniel Khuu
+ID: 109372156
+
+I pledge my honor that all parts of this project were done by me individually
+and without collaboration with anybody else.*/
+
 package osp.Devices;
 import osp.IFLModules.*;
 import osp.FileSys.OpenFile;
@@ -25,7 +31,8 @@ public class IORB extends IflIORB
     public IORB(ThreadCB thread, PageTableEntry page, 
 		int blockNumber, int deviceID, 
 		int ioType, OpenFile openFile) {
-        // your code goes here
+        
+        super(thread, page, blockNumber, deviceID, ioType, openFile);
 
     }
 
