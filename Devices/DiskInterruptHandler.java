@@ -48,7 +48,24 @@ public class DiskInterruptHandler extends IflDiskInterruptHandler
     */
     public void do_handleInterrupt()
     {
-        // your code goes here
+        IORB current = (IORB) InterruptVector.getEvent(); //this event has the IORB that caused the interrupt
+        ThreadCB thread = InterruptVector.getThread();
+        OpenFile current_open = current.getOpenFile();
+
+        current_open.decrementIORBCount();
+        if(current_open.getIORBCount() == 0){ //closePending flag set?
+        	//close the file
+        	current_open.close();
+        }
+
+        current.getPage().unlock();
+
+        if(current.getDeviceID() != SwapDeviceID){ //it's not swapped
+        	FrameTableEntry.setReferenced(true);
+
+            //set more checks at step 5
+        }
+
 
     }
 

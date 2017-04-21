@@ -38,6 +38,7 @@ public class Device extends IflDevice
     public Device(int id, int numberOfBlocks)
     {
         super(id, numberOfBlocks);
+        iorbQueue = new GenericList();
 
     }
 
@@ -72,7 +73,30 @@ public class Device extends IflDevice
     */
     public int do_enqueueIORB(IORB iorb)
     {
-        // your code goes here
+    	Queue a = new PriorityQueue();
+    	a = (PriorityQueue) iorbQueue;
+
+        PageTableEntry page = iorb.getPage();
+        page.lock(iorb);
+
+        iorb.getOpenFile().incrementIORBCount();
+
+        //select the correct cylinder according to the algorithm
+
+        iorb.setCylinder(iorb.getCylinder());
+
+        ThreadCB thread = iorb.getThread();
+
+        if(thread.getStatus() == ThreadKill)
+        	return FAILURE;
+
+        if(isBusy() == true){
+        	a.add(iorb);
+        }
+        else
+        	startIO(iorb);
+
+        return SUCCESS;
 
     }
 
@@ -84,7 +108,13 @@ public class Device extends IflDevice
     */
     public IORB do_dequeueIORB()
     {
-        // your code goes here
+        //pick which iorb to delete according to the CSCAN algorithm
+    	Queue a = new PriorityQueue();
+    	a = (PriorityQueue) iorbQueue;
+
+    	IORB item = (IORB) a.poll();
+
+    	return item;
 
     }
 
@@ -103,7 +133,15 @@ public class Device extends IflDevice
     */
     public void do_cancelPendingIO(ThreadCB thread)
     {
-        // your code goes here
+        Queue a = new PriorityQueue();
+    	a = (PriorityQueue) iorbQueue;
+
+    	for(IORB item: a){
+    		if(item.getThread().getStatus() == ThreadKill){
+    			item.getPage().unlock();
+    			item.getOpenFile().decrementIORBCount();
+    		}
+    	}
 
     }
 
