@@ -50,22 +50,45 @@ public class DiskInterruptHandler extends IflDiskInterruptHandler
     {
         IORB current = (IORB) InterruptVector.getEvent(); //this event has the IORB that caused the interrupt
         ThreadCB thread = InterruptVector.getThread();
-        OpenFile current_open = current.getOpenFile();
 
+        OpenFile current_open = current.getOpenFile();
         current_open.decrementIORBCount();
-        if(current_open.getIORBCount() == 0){ //closePending flag set?
-        	//close the file
+
+        //close the file
+        if(current_open.getIORBCount() == 0 && thread.do_cancelPendingIO() == true){
         	current_open.close();
         }
 
         current.getPage().unlock();
 
         if(current.getDeviceID() != SwapDeviceID){ //it's not swapped
-        	FrameTableEntry.setReferenced(true);
+            if(thread.getTask().getStatus() != TaskTerm)
+            	current.getPage().getFrame().setReferenced(true);
 
-            //set more checks at step 5
+            if(current.getIOType() == 0){ //0 is FileRead; 1 is FileWrite
+                if(thread.getTask().getStatus() == TaskLive)
+                    current.getPage().getFrame().setDirty(true);
+            }
+        }else{ //it is swapped
+            if(thread.getTask().getStatus() == TaskLive)
+                current.getPage().getFrame().setDirty(false);
         }
 
+        if(thread.getTask().getStatus() == TaskTerm && current.getPage().getFrame().getReserved() != null){
+            current.getPage().getFrame().setUnreserved(thread.getTask());
+        }
+
+        current.notifyThreads(); //change this? to getting from InterruptTimer?
+
+        int current_to_idle = current.getDeviceID(); //there is one device for multiple IORBS and threads
+        Device current_device = current.get(current_to_idle);
+        current_device.setBusy(false);
+
+        IORB newReq = null;
+        if((newReq = current_device.dequeueIORB()) != null)
+            current_device.startIO(newReq);
+
+        ThreadCB.dispatch();
 
     }
 
