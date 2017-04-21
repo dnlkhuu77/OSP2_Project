@@ -50,13 +50,17 @@ public class DiskInterruptHandler extends IflDiskInterruptHandler
     {
         IORB current = (IORB) InterruptVector.getEvent(); //this event has the IORB that caused the interrupt
         ThreadCB thread = InterruptVector.getThread();
+        int current_to_idle = current.getDeviceID(); //there is one device for multiple IORBS and threads
+        Device current_device = Device.get(current_to_idle);
 
         OpenFile current_open = current.getOpenFile();
         current_open.decrementIORBCount();
 
         //close the file
-        if(current_open.getIORBCount() == 0 && thread.do_cancelPendingIO() == true){
-        	current_open.close();
+        if(current_open.getIORBCount() == 0){
+            if(current_open.closePending == true)
+                //current_device.do_cancelPendingIO(thread);
+        	   current_open.close();
         }
 
         current.getPage().unlock();
@@ -80,8 +84,6 @@ public class DiskInterruptHandler extends IflDiskInterruptHandler
 
         current.notifyThreads(); //change this? to getting from InterruptTimer?
 
-        int current_to_idle = current.getDeviceID(); //there is one device for multiple IORBS and threads
-        Device current_device = current.get(current_to_idle);
         current_device.setBusy(false);
 
         IORB newReq = null;
