@@ -73,8 +73,8 @@ public class Device extends IflDevice
     */
     public int do_enqueueIORB(IORB iorb)
     {
-    	Queue a = new PriorityQueue();
-    	a = (PriorityQueue) iorbQueue;
+    	Queue a = new LinkedList<IORB>();
+    	a = (LinkedList) iorbQueue;
 
         PageTableEntry page = iorb.getPage();
         page.lock(iorb);
@@ -82,16 +82,14 @@ public class Device extends IflDevice
         iorb.getOpenFile().incrementIORBCount();
 
         //select the correct cylinder according to the algorithm
-
         iorb.setCylinder(iorb.getCylinder());
 
         ThreadCB thread = iorb.getThread();
-
         if(thread.getStatus() == ThreadKill)
         	return FAILURE;
 
         if(isBusy() == true){
-        	a.add(iorb);
+        	a.add(iorb); //sort this to CSCAN here
         }
         else
         	startIO(iorb);
@@ -109,10 +107,13 @@ public class Device extends IflDevice
     public IORB do_dequeueIORB()
     {
         //pick which iorb to delete according to the CSCAN algorithm
-    	Queue a = new PriorityQueue();
-    	a = (PriorityQueue) iorbQueue;
+    	Queue a = new LinkedList<IORB>();
+    	a = (LinkedList) iorbQueue;
 
-    	IORB item = (IORB) a.poll();
+    	IORB item = null;
+
+        if((item = (IORB) a.poll()) == null)
+            return null;
 
     	return item;
 
@@ -133,15 +134,15 @@ public class Device extends IflDevice
     */
     public void do_cancelPendingIO(ThreadCB thread)
     {
-        Queue a = new PriorityQueue();
-    	a = (PriorityQueue) iorbQueue;
+        Queue<IORB> a = new LinkedList<IORB>();
+    	a = (LinkedList) iorbQueue;
 
     	for(IORB item: a){
-    		if(item.getThread().getStatus() == ThreadKill){
-    			item.getPage().unlock();
-    			item.getOpenFile().decrementIORBCount();
-    		}
-    	}
+            if(item.getThread().getStatus() == ThreadKill){ //must check if the the IORB is initialed by thread
+                item.getPage().unlock();
+                item.getOpenFile().decrementIORBCount();
+            }
+        }
 
     }
 
