@@ -88,6 +88,14 @@ public class Device extends IflDevice
         if(thread.getStatus() == ThreadKill)
         	return FAILURE;
 
+        int block_size = MMU.getVirtualAddressBits() - MMU.getPageAddressBits();
+        int bytespertrack = ((Disk) this).getSectorsPerTrack() - ((Disk) this).getBytesPerSector();
+        int numbBlocksperTrack = bytespertrack / block_size;
+        int numbBlocksperCylinder = numbBlocksperTrack * ((Disk) this).getPlatters();
+        int cylinder = iorb.getBlockNumber() / numbBlocksperCylinder;
+
+        iorb.setCylinder(cylinder);
+
         if(isBusy() == true){
         	a.add(iorb); //sort this to CSCAN here
         }
