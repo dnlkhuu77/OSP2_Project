@@ -79,11 +79,11 @@ public class DiskInterruptHandler extends IflDiskInterruptHandler
                 current.getPage().getFrame().setDirty(false);
         }
 
-        if(thread.getTask().getStatus() == TaskTerm && current.getPage().getFrame().getReserved() != null){
+        if(thread.getTask().getStatus() == TaskTerm && current.getPage().getFrame().getReserved() == thread.getTask()){
             current.getPage().getFrame().setUnreserved(thread.getTask());
         }
 
-        current.notifyThreads(); //change this? to getting from InterruptTimer?
+        current.notifyThreads();
 
         current_device.setBusy(false);
 
