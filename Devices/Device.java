@@ -73,9 +73,6 @@ public class Device extends IflDevice
     */
     public int do_enqueueIORB(IORB iorb)
     {
-    	//Queue a = new LinkedList<>();
-    	//a = (Queue) iorbQueue;
-
         PageTableEntry page = iorb.getPage(); //sure?
         page.lock(iorb);
 
@@ -149,7 +146,11 @@ public class Device extends IflDevice
             if(item.getThread() == thread){ //must check if the the IORB is initialed by thread
                 item.getPage().unlock();
                 item.getOpenFile().decrementIORBCount();
-                item.getOpenFile().close(); //more conditions needed
+
+                if(item.getOpenFile().closePending == true && item.getOpenFile().getIORBCount() == 0)
+                    item.getOpenFile().close();
+
+                a.remove(item);
             }
         }
 

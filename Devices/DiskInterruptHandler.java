@@ -58,9 +58,10 @@ public class DiskInterruptHandler extends IflDiskInterruptHandler
 
         //close the file
         if(current_open.getIORBCount() == 0){
-            if(current_open.closePending == true)
-                //current_device.do_cancelPendingIO(thread);
-        	   current_open.close();
+            if(current_open.closePending == true){
+        	    current_open.close();
+                current_device.do_cancelPendingIO(thread);
+            }
         }
 
         current.getPage().unlock();
@@ -69,8 +70,8 @@ public class DiskInterruptHandler extends IflDiskInterruptHandler
             if(thread.getTask().getStatus() != TaskTerm)
             	current.getPage().getFrame().setReferenced(true);
 
-            if(current.getIOType() == 0){ //0 is FileRead; 1 is FileWrite
-                if(thread.getTask().getStatus() == TaskLive)
+            if(current.getIOType() == FileRead){
+                if(thread.getTask().getStatus() == TaskLive) //to see if the task associated with thread is still alive
                     current.getPage().getFrame().setDirty(true);
             }
         }else{ //it is swapped
