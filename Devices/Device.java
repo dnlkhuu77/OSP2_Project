@@ -25,13 +25,14 @@ import java.util.*;
 
 public class Device extends IflDevice
 {
+    int head = 0;
     /**
         This constructor initializes a device with the provided parameters.
-	As a first statement it must have the following:
+    As a first statement it must have the following:
 
-	    super(id,numberOfBlocks);
+        super(id,numberOfBlocks);
 
-	@param numberOfBlocks -- number of blocks on device
+    @param numberOfBlocks -- number of blocks on device
 
         @OSPProject Devices
     */
@@ -91,10 +92,10 @@ public class Device extends IflDevice
             return FAILURE;
 
         if(isBusy() == true){
-        	((GenericList) iorbQueue).append(iorb); //sort this to CSCAN here
+            inserting(iorb, cylinder);
         }
         else
-        	startIO(iorb);
+            startIO(iorb);
 
         return SUCCESS;
 
@@ -109,39 +110,58 @@ public class Device extends IflDevice
     public IORB do_dequeueIORB()
     {
         //pick which iorb to delete according to the CSCAN algorithm
-    	GenericList a = new GenericList();
-    	a = (GenericList) iorbQueue;
+        GenericList a = new GenericList();
+        a = (GenericList) iorbQueue;
+        Enumeration list = a.forwardIterator();
+        int flag = 0; //if the elements in front of the queue is empty, we must do the loop again with head = 0
 
-    	IORB item = null;
+        IORB item = null;
 
-        if((item = (IORB) a.removeHead()) == null)
+        if(a.isEmpty())
             return null;
 
-    	return item;
+        while(list.hasMoreElements()){ //for C-SCAN, we want to get next element after the head
+            item = (IORB) list.nextElement();
+            if(head <= item.getCylinder()){ //we are at the head (or element after head) of the queue, which will be dequeued
+                flag = 1;
+            }
+        }
+
+        if(flag == 0){ //if there is nothing after the head, C-SCAN requires that the head will go back to cylinder 0
+            head = 0;
+        }
+
+        if(flag == 1)
+            a.remove(item);
+        else
+            item = (IORB) a.removeHead();
+
+        head = item.getCylinder(); //set the new head
+        return item;
 
     }
 
     /**
         Remove all IORBs that belong to the given ThreadCB from 
-	this device's IORB queue
+    this device's IORB queue
 
         The method is called when the thread dies and the I/O 
         operations it requested are no longer necessary. The memory 
         page used by the IORB must be unlocked and the IORB count for 
-	the IORB's file must be decremented.
+    the IORB's file must be decremented.
 
-	@param thread thread whose I/O is being canceled
+    @param thread thread whose I/O is being canceled
 
         @OSPProject Devices
     */
     public void do_cancelPendingIO(ThreadCB thread)
     {
         GenericList a = new GenericList();
-    	a = (GenericList) iorbQueue;
+        a = (GenericList) iorbQueue;
 
         Enumeration list = a.forwardIterator();
 
-    	while(list.hasMoreElements()){
+        while(list.hasMoreElements()){
             IORB item = (IORB) list.nextElement();
             if(item.getThread() == thread){ //must check if the the IORB is initialed by thread
                 item.getPage().unlock();
@@ -157,11 +177,11 @@ public class Device extends IflDevice
     }
 
     /** Called by OSP after printing an error message. The student can
-	insert code here to print various tables and data structures
-	in their state just after the error happened.  The body can be
-	left empty, if this feature is not used.
-	
-	@OSPProject Devices
+    insert code here to print various tables and data structures
+    in their state just after the error happened.  The body can be
+    left empty, if this feature is not used.
+    
+    @OSPProject Devices
      */
     public static void atError()
     {
@@ -170,11 +190,11 @@ public class Device extends IflDevice
     }
 
     /** Called by OSP after printing a warning message. The student
-	can insert code here to print various tables and data
-	structures in their state just after the warning happened.
-	The body can be left empty, if this feature is not used.
-	
-	@OSPProject Devices
+    can insert code here to print various tables and data
+    structures in their state just after the warning happened.
+    The body can be left empty, if this feature is not used.
+    
+    @OSPProject Devices
      */
     public static void atWarning()
     {
@@ -186,6 +206,26 @@ public class Device extends IflDevice
     /*
        Feel free to add methods/fields to improve the readability of your code
     */
+    public void inserting(IORB iorb, int cylinder_number){
+        GenericList a = new GenericList();
+        a = (GenericList) iorbQueue;
+        Enumeration list = a.forwardIterator();
+        IORB item = null;
+
+        if(a.isEmpty())
+            a.append(iorb);
+        else{
+            while(list.hasMoreElements()){ //we want to order the queue in order of cylinder number to go C-SCAN
+                item = (IORB) list.nextElement();
+                if(item.getCylinder() >= cylinder_number){ //if our cy# is 6, this will break at a higher cylinder (like #8)
+                    break;
+                }
+            }
+
+            a.prependAtCurrent(iorb); //we will insert the element before the higher cylinder number; if at the end of queue, insert anyway
+        }
+
+    }
 
 }
 
