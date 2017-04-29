@@ -85,6 +85,11 @@ public class Device extends IflDevice
         int numbBlocksperCylinder = numbBlocksperTrack * ((Disk) this).getPlatters();
         int cylinder = iorb.getBlockNumber() / numbBlocksperCylinder;
 
+        /*
+        //used to calculate how many tracks are in a cylinder (for statistics)
+        int tracksperCylinder = numbBlocksperCylinder / numbBlocksperTrack;
+        System.out.println("TRACKS PER CYLINDER: " + tracksperCylinder);*/
+
         iorb.setCylinder(cylinder);
 
         ThreadCB thread = iorb.getThread();
@@ -211,6 +216,7 @@ public class Device extends IflDevice
         a = (GenericList) iorbQueue;
         Enumeration list = a.forwardIterator();
         IORB item = null;
+        int flag = 0;
 
         if(a.isEmpty())
             a.append(iorb);
@@ -218,11 +224,13 @@ public class Device extends IflDevice
             while(list.hasMoreElements()){ //we want to order the queue in order of cylinder number to go C-SCAN
                 item = (IORB) list.nextElement();
                 if(item.getCylinder() >= cylinder_number){ //if our cy# is 6, this will break at a higher cylinder (like #8)
+                    a.prependAtCurrent(iorb); //we will insert the element before the higher cylinder number
+                    flag = 1;
                     break;
                 }
             }
-
-            a.prependAtCurrent(iorb); //we will insert the element before the higher cylinder number; if at the end of queue, insert anyway
+            if(flag == 0)
+                a.append(iorb); //if at the end of queue, insert at the end of the list
         }
 
     }
